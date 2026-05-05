@@ -4,7 +4,7 @@ import os
 from langchain_community.vectorstores import FAISS
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 
-# Load env
+# Load environment variables
 load_dotenv()
 
 if not os.getenv("OPENAI_API_KEY"):
@@ -23,24 +23,31 @@ db = FAISS.load_local(
 
 print("✅ AI Tax Assistant Ready\n")
 
-# Take user input
+# User input
 query = input("💬 Ask a tax question: ")
 
-# Retrieve relevant chunks
+# Retrieve top chunks
 docs = db.similarity_search(query, k=3)
 
-# Combine context
-context = "\n\n".join([doc.page_content for doc in docs])
+# Build context with numbering
+context_list = []
+for i, doc in enumerate(docs):
+    context_list.append(f"[{i+1}] {doc.page_content}")
 
-# Create sources
-sources = "\n".join([f"- {doc.page_content}" for doc in docs])
+context = "\n\n".join(context_list)
 
-# Prompt
+# Prompt (IMPROVED)
 prompt = f"""
-You are a helpful Indian tax assistant.
+You are an expert Indian tax assistant.
 
-Answer the question based ONLY on the context below.
-Also provide clear explanation.
+Answer the user's question using ONLY the context below.
+
+Rules:
+- Give a clear and concise answer
+- Mention section names (like 80C, 80D)
+- Use bullet points if needed
+- Cite sources using [1], [2], etc.
+- If unsure, say "I don't know"
 
 Context:
 {context}
@@ -51,12 +58,14 @@ Question:
 Answer:
 """
 
-# Generate response
+# Generate answer
 response = llm.invoke(prompt)
 
-# Output
+# Output answer
 print("\n🤖 AI Answer:\n")
 print(response.content)
 
+# Print sources separately
 print("\n📚 Sources:\n")
-print(sources)
+for i, doc in enumerate(docs):
+    print(f"[{i+1}] {doc.page_content}\n")
