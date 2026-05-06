@@ -1,11 +1,12 @@
 import sys
 import os
-
 sys.path.append(
     os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..")
     )
 )
+from utils.firestore_db import save_chat, get_user_chats
+
 import pyrebase
 from utils.firebase_config import firebase_config
 import streamlit as st
@@ -275,6 +276,20 @@ if "user" not in st.session_state:
 
     st.stop()
 
+st.sidebar.markdown("---")
+st.sidebar.subheader("🕘 Previous Chats")
+
+if "user" in st.session_state:
+
+    previous_chats = get_user_chats(
+        st.session_state["user"]
+    )
+
+    for chat in previous_chats[-5:]:
+
+        st.sidebar.write(
+            f"💬 {chat['question']}"
+        )
 
 prompt = st.chat_input("Ask your tax question...")
 
@@ -307,6 +322,11 @@ if prompt:
                 data = response.json()
 
                 answer = data["answer"]
+                save_chat(
+                st.session_state["user"],
+                prompt,
+                answer
+                )
                 sources = data["sources"]
 
                 st.markdown(answer)
