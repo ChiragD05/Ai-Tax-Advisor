@@ -15,6 +15,7 @@ app = FastAPI()
 # Request body model
 class QueryRequest(BaseModel):
     question: str
+    chat_history: list = []
 
 # Root endpoint
 @app.get("/")
@@ -26,7 +27,10 @@ def home():
 def ask_question(request: QueryRequest):
 
     # Call RAG pipeline directly
-    answer, sources = get_tax_answer(request.question)
+    answer, sources = get_tax_answer(
+    request.question,
+    request.chat_history
+    )
 
     return {
         "question": request.question,

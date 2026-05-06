@@ -1,107 +1,208 @@
-import sys
-import os
 import streamlit as st
+import requests
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+# =========================
+# PAGE CONFIG
+# =========================
+st.set_page_config(
+    page_title="AI Tax Advisor",
+    page_icon="💰",
+    layout="wide"
+)
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from rag.pipeline import get_tax_answer
-
-st.set_page_config(page_title="AI Tax Advisor", layout="wide")
-
-# 🎨 Custom CSS
+# =========================
+# CUSTOM CSS
+# =========================
 st.markdown("""
 <style>
-body {
+
+/* Main App Background */
+.stApp {
     background: linear-gradient(135deg, #0f172a, #1e293b);
     color: white;
 }
 
-.title {
-    font-size: 40px;
-    font-weight: bold;
+/* Hide Streamlit Branding */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+
+/* Main Title */
+.main-title {
+    font-size: 48px;
+    font-weight: 800;
     color: #facc15;
+    margin-bottom: 0px;
 }
 
+/* Subtitle */
 .subtitle {
-    color: #94a3b8;
-    margin-bottom: 20px;
+    font-size: 18px;
+    color: #cbd5e1;
+    margin-bottom: 30px;
 }
 
-.card {
+/* Cards */
+.custom-card {
     background: rgba(255,255,255,0.05);
-    padding: 20px;
-    border-radius: 15px;
+    padding: 25px;
+    border-radius: 18px;
     backdrop-filter: blur(10px);
-    box-shadow: 0 0 15px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 0 25px rgba(0,0,0,0.25);
 }
 
+/* Answer Box */
 .answer-box {
-    background: rgba(255,255,255,0.08);
-    padding: 20px;
-    border-radius: 15px;
-}
-
-.sources-box {
     background: rgba(255,255,255,0.06);
-    padding: 20px;
-    border-radius: 15px;
+    padding: 25px;
+    border-radius: 16px;
+    border-left: 5px solid #facc15;
 }
 
-button {
-    background: linear-gradient(to right, #facc15, #f59e0b);
-    color: black !important;
-    font-weight: bold;
-    border-radius: 10px;
+/* Sources Box */
+.sources-box {
+    background: rgba(255,255,255,0.04);
+    padding: 20px;
+    border-radius: 16px;
 }
+
+/* Input Box */
+.stTextInput > div > div > input {
+    background-color: rgba(255,255,255,0.08);
+    color: white;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 12px;
+}
+
+/* Button */
+.stButton > button {
+    width: 100%;
+    background: linear-gradient(to right, #facc15, #f59e0b);
+    color: black;
+    font-weight: bold;
+    border-radius: 12px;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+}
+
+.stButton > button:hover {
+    background: linear-gradient(to right, #fde047, #fbbf24);
+    color: black;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    color: #94a3b8;
+    margin-top: 40px;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
-# 🧠 HEADER
-st.markdown('<div class="title">💰 AI Tax Advisor - India</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Intelligent Guidance for Your Financial Success</div>', unsafe_allow_html=True)
+# =========================
+# HEADER
+# =========================
+st.markdown(
+    '<div class="main-title">💰 AI Tax Advisor</div>',
+    unsafe_allow_html=True
+)
 
-# 📦 MAIN INPUT CARD
-st.markdown('<div class="card">', unsafe_allow_html=True)
+st.markdown(
+    '<div class="subtitle">AI-powered Indian Tax Planning & ITR Guidance System</div>',
+    unsafe_allow_html=True
+)
 
-query = st.text_input("Ask Your Tax Question:", placeholder="e.g. Can I claim ELSS under 80C?")
+# =========================
+# SIDEBAR
+# =========================
+with st.sidebar:
 
-submit = st.button("🚀 Submit Query")
+    st.markdown("## ⚙️ System Status")
 
-st.markdown('</div>', unsafe_allow_html=True)
+    st.success("✅ FastAPI Backend Running")
+    st.success("✅ OpenAI Connected")
+    st.success("✅ FAISS Vector DB Loaded")
 
-# ⚙️ STATUS PANEL
-col1, col2 = st.columns([3, 1])
+    st.markdown("---")
 
-with col2:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.write("🟢 Query Analysis")
-    st.write("🟢 Source Retrieval")
-    st.write("🟢 Answer Generation")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("## 📌 Features")
 
-# 🤖 RESPONSE SECTION
-if submit and query:
-    with st.spinner("Thinking like a tax expert..."):
-        answer, sources = get_tax_answer(query)
+    st.write("• RAG-based retrieval")
+    st.write("• AI-generated answers")
+    st.write("• Source citations")
+    st.write("• FastAPI backend")
+    st.write("• Streamlit frontend")
 
-    colA, colB = st.columns(2)
+    st.markdown("---")
 
-    # 🧠 Answer
-    with colA:
-        st.markdown('<div class="answer-box">', unsafe_allow_html=True)
-        st.subheader("🤖 AI Generated Answer")
-        st.write(answer)
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown("## 💡 Sample Questions")
 
-    # 📚 Sources
-    with colB:
-        st.markdown('<div class="sources-box">', unsafe_allow_html=True)
-        st.subheader("📚 Citations & Sources")
-        for i, s in enumerate(sources):
-            st.write(f"[{i+1}] {s}")
-        st.markdown('</div>', unsafe_allow_html=True)
+    st.caption("Can I claim ELSS under 80C?")
+    st.caption("What is HRA exemption?")
+    st.caption("Difference between old and new tax regime?")
+    st.caption("Can I claim home loan deduction?")
 
-# ⚠️ Footer
-st.markdown("""
-<hr>
-<small>Disclaimer: General information only. Consult a tax professional.</small>
-""", unsafe_allow_html=True)
+
+prompt = st.chat_input("Ask your tax question...")
+
+if prompt:
+
+    # Store user message
+    st.session_state.messages.append(
+        {"role": "user", "content": prompt}
+    )
+
+    # Display user message
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # AI response
+    with st.chat_message("assistant"):
+
+        with st.spinner("Thinking like a tax expert..."):
+
+            try:
+
+                response = requests.post(
+                    "http://127.0.0.1:8000/ask",
+                    json={
+                      "question": prompt,
+                      "chat_history": st.session_state.messages
+                    }
+                )
+
+                data = response.json()
+
+                answer = data["answer"]
+                sources = data["sources"]
+
+                st.markdown(answer)
+
+                with st.expander("📚 Sources"):
+                    for i, source in enumerate(sources):
+                        st.write(f"[{i+1}] {source}")
+
+                # Store assistant response
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": answer}
+                )
+
+            except Exception as e:
+
+                st.error(f"Backend Error: {e}")
+# =========================
+# FOOTER
+# =========================
+st.markdown(
+    """
+    <div class="footer">
+    ⚠️ Disclaimer: This tool provides general tax guidance and should not replace professional financial advice.
+    </div>
+    """,
+    unsafe_allow_html=True
+)

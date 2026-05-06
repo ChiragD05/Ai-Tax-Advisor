@@ -15,7 +15,7 @@ db = FAISS.load_local(
     allow_dangerous_deserialization=True
 )
 
-def get_tax_answer(query):
+def get_tax_answer(query, chat_history=[]):
     docs = db.similarity_search(query, k=3)
 
     context_list = []
@@ -23,15 +23,21 @@ def get_tax_answer(query):
         context_list.append(f"[{i+1}] {doc.page_content}")
 
     context = "\n\n".join(context_list)
+    history = ""
+
+    for msg in chat_history:
+      role  = msg["role"]
+      content = msg["content"]
+      history += f"{role}: {content}\n"
 
     prompt = f"""
     You are an expert Indian tax assistant.
 
-    Answer using ONLY the context below.
-    Cite sources like [1], [2].
+    Previous Conversation:
+    {history}
 
     Context:
-    {context}
+    {context} 
 
     Question:
     {query}
