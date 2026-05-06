@@ -1,5 +1,14 @@
+import sys
+import os
+
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..")
+    )
+)
 import streamlit as st
 import requests
+from rag.pdf_ingest import create_pdf_vectorstore
 if "messages" not in st.session_state:
     st.session_state.messages = []
 # =========================
@@ -8,7 +17,8 @@ if "messages" not in st.session_state:
 st.set_page_config(
     page_title="AI Tax Advisor",
     page_icon="💰",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # =========================
@@ -26,7 +36,7 @@ st.markdown("""
 /* Hide Streamlit Branding */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-header {visibility: hidden;}
+
 
 /* Main Title */
 .main-title {
@@ -146,6 +156,23 @@ with st.sidebar:
     st.caption("What is HRA exemption?")
     st.caption("Difference between old and new tax regime?")
     st.caption("Can I claim home loan deduction?")
+    st.markdown("---")
+    st.markdown("## 📄 Upload Tax PDF")
+
+    uploaded_file = st.file_uploader(
+    "Upload PDF",
+    type=["pdf"]
+    )
+    if uploaded_file is not None:
+
+     with open(f"data/{uploaded_file.name}", "wb") as f:
+        f.write(uploaded_file.getbuffer())
+
+     st.success("✅ PDF uploaded successfully")
+    
+     with st.spinner("Processing PDF..."):
+        create_pdf_vectorstore(f"data/{uploaded_file.name}")
+     st.success("✅ PDF indexed into vector database")
 
 
 prompt = st.chat_input("Ask your tax question...")

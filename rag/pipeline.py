@@ -9,13 +9,14 @@ load_dotenv()
 embeddings = OpenAIEmbeddings()
 llm = ChatOpenAI(model="gpt-4o-mini", temperature=0)
 
-db = FAISS.load_local(
+
+
+def get_tax_answer(query, chat_history=[]):
+    db = FAISS.load_local(
     "faiss_index",
     embeddings,
     allow_dangerous_deserialization=True
-)
-
-def get_tax_answer(query, chat_history=[]):
+    )
     docs = db.similarity_search(query, k=3)
 
     context_list = []
