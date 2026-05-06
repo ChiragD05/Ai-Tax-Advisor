@@ -6,9 +6,13 @@ sys.path.append(
         os.path.join(os.path.dirname(__file__), "..")
     )
 )
+import pyrebase
+from utils.firebase_config import firebase_config
 import streamlit as st
 import requests
 from rag.pdf_ingest import create_pdf_vectorstore
+firebase = pyrebase.initialize_app(firebase_config)
+auth = firebase.auth()
 if "messages" not in st.session_state:
     st.session_state.messages = []
 # =========================
@@ -173,6 +177,103 @@ with st.sidebar:
      with st.spinner("Processing PDF..."):
         create_pdf_vectorstore(f"data/{uploaded_file.name}")
      st.success("✅ PDF indexed into vector database")
+
+st.sidebar.title("🔐 Authentication")
+
+email = st.sidebar.text_input("Email")
+password = st.sidebar.text_input(
+    "Password",
+    type="password"
+)
+
+login = st.sidebar.button("Login")
+signup = st.sidebar.button("Signup")
+logout = st.sidebar.button("Logout")
+if signup:
+
+    try:
+
+        auth.create_user_with_email_and_password(
+            email,
+            password
+        )
+
+        st.sidebar.success(
+            "✅ Account created successfully"
+        )
+
+    except Exception as e:
+
+       error_message = str(e)
+
+       if "WEAK_PASSWORD" in error_message:
+
+        st.sidebar.error(
+            "❌ Password must be at least 6 characters"
+        )
+
+       elif "EMAIL_EXISTS" in error_message:
+
+        st.sidebar.error(
+            "❌ Email already exists"
+        )
+
+       else:
+
+        st.sidebar.error(
+            "❌ Signup failed"
+        )
+if login:
+
+    try:
+
+        user = auth.sign_in_with_email_and_password(
+            email,
+            password
+        )
+
+        st.session_state["user"] = email
+
+        st.sidebar.success(
+            f"✅ Logged in as {email}"
+        )
+
+    except Exception as e:
+
+       error_message = str(e)
+
+       if "INVALID_PASSWORD" in error_message:
+
+          st.sidebar.error(
+            "❌ Wrong password"
+          )
+
+       elif "EMAIL_NOT_FOUND" in error_message:
+
+          st.sidebar.error(
+            "❌ User not found"
+           )
+
+       else:
+
+          st.sidebar.error(
+            "❌ Login failed"
+          )
+if logout:
+
+    if "user" in st.session_state:
+
+        del st.session_state["user"]
+
+        st.sidebar.success("Logged out")
+
+if "user" not in st.session_state:
+
+    st.warning(
+        "🔒 Please login to access AI Tax Advisor"
+    )
+
+    st.stop()
 
 
 prompt = st.chat_input("Ask your tax question...")

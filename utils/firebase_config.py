@@ -1,0 +1,9 @@
+firebase_config = {
+    "apiKey": "AIzaSyATgetk0rvly--sN-wF_MlqUUCuj0iiyY8",
+    "authDomain": "ai-tax-advisor-70984.firebaseapp.com",
+    "projectId": "ai-tax-advisor-70984",
+    "storageBucket": "ai-tax-advisor-70984.firebasestorage.app",
+    "messagingSenderId": "266778354857",
+    "appId": "1:266778354857:web:fd4f278d7dce90a6f8f5b8",
+    "databaseURL": ""
+}
