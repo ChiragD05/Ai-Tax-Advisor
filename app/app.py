@@ -283,8 +283,8 @@ st.markdown(
 with st.sidebar:
     st.markdown("## 🔐 Authentication")
 
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
+    email = st.text_input("Email", key="auth_email")
+    password = st.text_input("Password", type="password", key="auth_password")
 
     auth_col1, auth_col2 = st.columns(2)
     with auth_col1:

@@ -1,5 +1,5 @@
 .stApp {
-    background: linear-gradient(135deg, #0f172a, #1e293b);
+    background: linear-gradient(135deg, #062841, #102d5f);
     color: white;
 }
 
@@ -13,7 +13,7 @@ header {
 }
 
 [data-testid="stSidebar"] {
-    background: #111827;
+    background: #374460;
     border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
