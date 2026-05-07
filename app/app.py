@@ -10,6 +10,7 @@ from utils.tax_calculator import (
     calculate_old_regime_tax,
     calculate_new_regime_tax
 )
+from utils.tax_visuals import plot_tax_comparison
 import pyrebase
 from utils.firebase_config import firebase_config
 import streamlit as st
@@ -350,6 +351,18 @@ if calculate_tax:
         st.sidebar.info(
             "Both regimes result in same tax"
         )
+    fig = plot_tax_comparison(old_tax, new_tax)
+    st.sidebar.pyplot(fig)
+    tax_saved = abs(old_tax - new_tax)
+
+    st.sidebar.write(f"Tax Difference: ₹{tax_saved:,.2f}")
+
+    if old_tax < new_tax:
+      st.sidebar.success(f"You save ₹{tax_saved:,.2f} with Old Regime")
+    elif new_tax < old_tax:
+      st.sidebar.success(f"You save ₹{tax_saved:,.2f} with New Regime")
+    else:
+      st.sidebar.info("Both regimes are equal")
 
 prompt = st.chat_input("Ask your tax question...")
 
