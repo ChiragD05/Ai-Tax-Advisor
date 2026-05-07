@@ -11,7 +11,8 @@ sys.path.append(
 import streamlit as st
 import requests
 import pyrebase
-
+from utils.tax_simulator import simulate_tax_scenarios
+from utils.tax_visuals import plot_tax_comparison, plot_scenario_comparison
 from utils.firebase_config import firebase_config
 from utils.firestore_db import save_chat, get_user_chats
 from utils.tax_calculator import (
@@ -270,67 +271,64 @@ with left_col:
         value=1200000,
     )
 
-    st.markdown("### ✅ Select deductions")
-    st.caption(
-        "Old-only deductions will be disabled if you switch to the new regime."
-    )
+    st.markdown("### ✅ Enter deductions")
 
-    selected_total = 0
-    selected_items = []
     deduction_breakdown = {}
+
     for item in DEDUCTIONS:
         allowed = regime in item["allowed_in"]
-        row_left, row_right = st.columns([3, 1])
 
-        with row_left:
-            checked = st.checkbox(
-                f"{item['label']} ({item['tag']})",
-                key=f"chk_{item['key']}",
-                disabled=not allowed,
-                value=(allowed and item["key"] in ["standard"]),
-            )
-            if not allowed:
-                st.caption("Only available in the old tax regime")
+        st.markdown(f"**{item['label']}**  \n*{item['tag']}*")
 
-        with row_right:
-            amount = st.number_input(
-                "₹",
-                min_value=0,
-                step=1000,
-                value=item["default"],
-                key=f"amt_{item['key']}",
-                disabled=not checked or not allowed,
-                label_visibility="collapsed",
-            )
+        amount = st.slider(
+            f"{item['key']}_slider",
+            min_value=0,
+            max_value=250000 if item["key"] in ["80c", "80ccd1b", "24b"] else 100000,
+            value=item["default"] if allowed else 0,
+            step=1000,
+            disabled=not allowed,
+            label_visibility="collapsed",
+        )
 
-        if checked and allowed:
-            selected_total += amount
-            selected_items.append(f"{item['label']} = ₹{amount:,.0f}")
+        if not allowed:
+            st.caption("Not available in the new tax regime")
+
+        if allowed:
             deduction_breakdown[item["key"]] = amount
+    
+        current_total = sum(deduction_breakdown.values())
 
     st.markdown("### 📌 Selected deductions")
-    if selected_items:
-        for line in selected_items:
-            st.write(f"• {line}")
-    else:
-        st.caption("No deductions selected.")
+    for key, amount in deduction_breakdown.items():
+        if amount > 0:
+            label = next(
+                (item["label"] for item in DEDUCTIONS if item["key"] == key),
+                key
+            )
+            st.write(f"• {label} = ₹{amount:,.0f}")
 
-    calculate_tax = st.button("Calculate Tax")
+    calculate_tax = st.button("Calculate Tax & Simulate")
 
     if calculate_tax:
-       
-        old_tax = calculate_old_regime_tax(salary, selected_total)
+        old_tax = calculate_old_regime_tax(salary, current_total)
         new_tax = calculate_new_regime_tax(salary)
+
+        simulation_results = simulate_tax_scenarios(
+            salary=salary,
+            deduction_breakdown=deduction_breakdown,
+        )
+
         st.session_state.tax_context = {
-    "salary": salary,
-    "regime": regime,
-    "selected_total": selected_total,
-    "selected_items": selected_items,
-    "deduction_breakdown": deduction_breakdown,
-    "old_tax": old_tax,
-    "new_tax": new_tax,
-    "best_regime": "Old tax regime" if old_tax < new_tax else "New tax regime" if new_tax < old_tax else "Both equal",
-}
+            "salary": salary,
+            "regime": regime,
+            "selected_total": current_total,
+            "deduction_breakdown": deduction_breakdown,
+            "old_tax": old_tax,
+            "new_tax": new_tax,
+            "best_regime": "Old tax regime" if old_tax < new_tax else "New tax regime" if new_tax < old_tax else "Both equal",
+            "simulation_results": simulation_results,
+        }
+
         st.markdown("### 📊 Tax Comparison")
         st.write(f"Old Regime Tax: ₹{old_tax:,.2f}")
         st.write(f"New Regime Tax: ₹{new_tax:,.2f}")
@@ -345,14 +343,35 @@ with left_col:
         fig = plot_tax_comparison(old_tax, new_tax)
         st.pyplot(fig)
 
+        st.markdown("### 🔁 Tax Simulations")
+        st.dataframe(
+            [
+                {
+                    "Scenario": s["scenario"],
+                    "Deductions": f"₹{s['deductions']:,.0f}",
+                    "Old Tax": f"₹{s['old_tax']:,.2f}",
+                    "New Tax": f"₹{s['new_tax']:,.2f}",
+                    "Savings": f"₹{s['savings']:,.2f}",
+                    "Best Regime": s["best_regime"],
+                }
+                for s in simulation_results
+            ],
+            use_container_width=True,
+        )
+
+        scenario_fig = plot_scenario_comparison(simulation_results)
+        st.pyplot(scenario_fig)
+
         tax_saved = abs(old_tax - new_tax)
         st.markdown(f"### 💰 Tax Difference: ₹{tax_saved:,.2f}")
-        st.session_state.messages.append({
-        "role": "assistant",
-         "content": f"I've calculated your taxes. Old regime tax: ₹{old_tax:,.2f}, New regime tax: ₹{new_tax:,.2f}. Ask me anything about this result."
-         })
 
-    st.markdown("</div>", unsafe_allow_html=True)
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": (
+                f"I've calculated your taxes. Old regime tax: ₹{old_tax:,.2f}, "
+                f"New regime tax: ₹{new_tax:,.2f}. Ask me anything about this result."
+            )
+        })
 
 
 # ------------------------------------------------------
