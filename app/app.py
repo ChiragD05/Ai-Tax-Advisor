@@ -1,28 +1,50 @@
+
 import sys
 import os
+from pathlib import Path
+
 sys.path.append(
     os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..")
     )
 )
+
+import streamlit as st
+import requests
+import pyrebase
+
+from utils.firebase_config import firebase_config
 from utils.firestore_db import save_chat, get_user_chats
+
 from utils.tax_calculator import (
     calculate_old_regime_tax,
     calculate_new_regime_tax
 )
+
 from utils.tax_visuals import plot_tax_comparison
-import pyrebase
-from utils.firebase_config import firebase_config
-import streamlit as st
-import requests
+
 from rag.pdf_ingest import create_pdf_vectorstore
-firebase = pyrebase.initialize_app(firebase_config)
-auth = firebase.auth()
-if "messages" not in st.session_state:
-    st.session_state.messages = []
-# =========================
+
+
+# =========================================
+# LOAD CSS
+# =========================================
+
+def load_css():
+
+    css_path = Path("assets/styles.css")
+
+    with open(css_path) as f:
+        st.markdown(
+            f"<style>{f.read()}</style>",
+            unsafe_allow_html=True
+        )
+
+
+# =========================================
 # PAGE CONFIG
-# =========================
+# =========================================
+
 st.set_page_config(
     page_title="AI Tax Advisor",
     page_icon="💰",
@@ -30,247 +52,162 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# =========================
-# CUSTOM CSS
-# =========================
-st.markdown("""
-<style>
-
-/* Main App Background */
-.stApp {
-    background: linear-gradient(135deg, #0f172a, #1e293b);
-    color: white;
-}
-
-/* Hide Streamlit Branding */
-#MainMenu {visibility: hidden;}
-footer {visibility: hidden;}
+load_css()
 
 
-/* Main Title */
-.main-title {
-    font-size: 48px;
-    font-weight: 800;
-    color: #facc15;
-    margin-bottom: 0px;
-}
+# =========================================
+# FIREBASE
+# =========================================
 
-/* Subtitle */
-.subtitle {
-    font-size: 18px;
-    color: #cbd5e1;
-    margin-bottom: 30px;
-}
+firebase = pyrebase.initialize_app(firebase_config)
+auth = firebase.auth()
 
-/* Cards */
-.custom-card {
-    background: rgba(255,255,255,0.05);
-    padding: 25px;
-    border-radius: 18px;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow: 0 0 25px rgba(0,0,0,0.25);
-}
 
-/* Answer Box */
-.answer-box {
-    background: rgba(255,255,255,0.06);
-    padding: 25px;
-    border-radius: 16px;
-    border-left: 5px solid #facc15;
-}
+# =========================================
+# SESSION STATE
+# =========================================
 
-/* Sources Box */
-.sources-box {
-    background: rgba(255,255,255,0.04);
-    padding: 20px;
-    border-radius: 16px;
-}
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-/* Input Box */
-.stTextInput > div > div > input {
-    background-color: rgba(255,255,255,0.08);
-    color: white;
-    border-radius: 12px;
-    border: 1px solid rgba(255,255,255,0.15);
-    padding: 12px;
-}
 
-/* Button */
-.stButton > button {
-    width: 100%;
-    background: linear-gradient(to right, #facc15, #f59e0b);
-    color: black;
-    font-weight: bold;
-    border-radius: 12px;
-    border: none;
-    padding: 12px;
-    font-size: 16px;
-}
-
-.stButton > button:hover {
-    background: linear-gradient(to right, #fde047, #fbbf24);
-    color: black;
-}
-
-/* Footer */
-.footer {
-    text-align: center;
-    color: #94a3b8;
-    margin-top: 40px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-# =========================
+# =========================================
 # HEADER
-# =========================
+# =========================================
+
 st.markdown(
-    '<div class="main-title">💰 AI Tax Advisor</div>',
+    """
+    <div class='main-header'>
+        <div class='main-title'>💰 AI Tax Advisor</div>
+        <div class='subtitle'>
+            AI-powered Indian Tax Planning & Financial Guidance Platform
+        </div>
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
-st.markdown(
-    '<div class="subtitle">AI-powered Indian Tax Planning & ITR Guidance System</div>',
-    unsafe_allow_html=True
-)
 
-# =========================
+# =========================================
 # SIDEBAR
-# =========================
+# =========================================
+
 with st.sidebar:
 
-    st.markdown("## ⚙️ System Status")
+    st.markdown("## 🔐 Authentication")
 
-    st.success("✅ FastAPI Backend Running")
-    st.success("✅ OpenAI Connected")
-    st.success("✅ FAISS Vector DB Loaded")
+    email = st.text_input("Email")
 
-    st.markdown("---")
-
-    st.markdown("## 📌 Features")
-
-    st.write("• RAG-based retrieval")
-    st.write("• AI-generated answers")
-    st.write("• Source citations")
-    st.write("• FastAPI backend")
-    st.write("• Streamlit frontend")
-
-    st.markdown("---")
-
-    st.markdown("## 💡 Sample Questions")
-
-    st.caption("Can I claim ELSS under 80C?")
-    st.caption("What is HRA exemption?")
-    st.caption("Difference between old and new tax regime?")
-    st.caption("Can I claim home loan deduction?")
-    st.markdown("---")
-    st.markdown("## 📄 Upload Tax PDF")
-
-    uploaded_file = st.file_uploader(
-    "Upload PDF",
-    type=["pdf"]
+    password = st.text_input(
+        "Password",
+        type="password"
     )
-    if uploaded_file is not None:
 
-     with open(f"data/{uploaded_file.name}", "wb") as f:
-        f.write(uploaded_file.getbuffer())
+    col1, col2 = st.columns(2)
 
-     st.success("✅ PDF uploaded successfully")
-    
-     with st.spinner("Processing PDF..."):
-        create_pdf_vectorstore(f"data/{uploaded_file.name}")
-     st.success("✅ PDF indexed into vector database")
+    with col1:
+        login = st.button("Login")
 
-st.sidebar.title("🔐 Authentication")
+    with col2:
+        signup = st.button("Signup")
 
-email = st.sidebar.text_input("Email")
-password = st.sidebar.text_input(
-    "Password",
-    type="password"
-)
+    logout = st.button("Logout")
 
-login = st.sidebar.button("Login")
-signup = st.sidebar.button("Signup")
-logout = st.sidebar.button("Logout")
-if signup:
 
-    try:
+    # SIGNUP
+    if signup:
 
-        auth.create_user_with_email_and_password(
-            email,
-            password
-        )
+        try:
 
-        st.sidebar.success(
-            "✅ Account created successfully"
-        )
+            auth.create_user_with_email_and_password(
+                email,
+                password
+            )
 
-    except Exception as e:
+            st.success("✅ Account created")
 
-       error_message = str(e)
+        except Exception as e:
 
-       if "WEAK_PASSWORD" in error_message:
+            error_message = str(e)
 
-        st.sidebar.error(
-            "❌ Password must be at least 6 characters"
-        )
+            if "WEAK_PASSWORD" in error_message:
+                st.error(
+                    "❌ Password must be at least 6 characters"
+                )
 
-       elif "EMAIL_EXISTS" in error_message:
+            elif "EMAIL_EXISTS" in error_message:
+                st.error(
+                    "❌ Email already exists"
+                )
 
-        st.sidebar.error(
-            "❌ Email already exists"
-        )
+            else:
+                st.error("❌ Signup failed")
 
-       else:
 
-        st.sidebar.error(
-            "❌ Signup failed"
-        )
-if login:
+    # LOGIN
+    if login:
 
-    try:
+        try:
 
-        user = auth.sign_in_with_email_and_password(
-            email,
-            password
-        )
+            auth.sign_in_with_email_and_password(
+                email,
+                password
+            )
 
-        st.session_state["user"] = email
+            st.session_state["user"] = email
 
-        st.sidebar.success(
-            f"✅ Logged in as {email}"
-        )
+            st.success(f"✅ Logged in as {email}")
 
-    except Exception as e:
+        except Exception as e:
 
-       error_message = str(e)
+            error_message = str(e)
 
-       if "INVALID_PASSWORD" in error_message:
+            if "INVALID_PASSWORD" in error_message:
+                st.error("❌ Wrong password")
 
-          st.sidebar.error(
-            "❌ Wrong password"
-          )
+            elif "EMAIL_NOT_FOUND" in error_message:
+                st.error("❌ User not found")
 
-       elif "EMAIL_NOT_FOUND" in error_message:
+            else:
+                st.error("❌ Login failed")
 
-          st.sidebar.error(
-            "❌ User not found"
-           )
 
-       else:
+    # LOGOUT
+    if logout:
 
-          st.sidebar.error(
-            "❌ Login failed"
-          )
-if logout:
+        if "user" in st.session_state:
 
+            del st.session_state["user"]
+            st.success("Logged out")
+
+
+    st.markdown("---")
+
+
+    # PREVIOUS CHATS
     if "user" in st.session_state:
 
-        del st.session_state["user"]
+        st.markdown("## 🕘 Previous Chats")
 
-        st.sidebar.success("Logged out")
+        previous_chats = get_user_chats(
+            st.session_state["user"]
+        )
+
+        for chat in previous_chats[-5:]:
+
+            st.markdown(
+                f"""
+                <div class='history-card'>
+                    💬 {chat['question']}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+
+# =========================================
+# AUTH PROTECTION
+# =========================================
 
 if "user" not in st.session_state:
 
@@ -280,150 +217,216 @@ if "user" not in st.session_state:
 
     st.stop()
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("🕘 Previous Chats")
 
-if "user" in st.session_state:
+# =========================================
+# MAIN LAYOUT
+# =========================================
 
-    previous_chats = get_user_chats(
-        st.session_state["user"]
+left_col, right_col = st.columns([1, 2])
+
+
+# =========================================
+# TAX CALCULATOR
+# =========================================
+
+with left_col:
+
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+
+    st.markdown("## 🧮 Tax Calculator")
+
+    salary = st.number_input(
+        "Annual Salary (₹)",
+        min_value=0,
+        step=50000
     )
 
-    for chat in previous_chats[-5:]:
-
-        st.sidebar.write(
-            f"💬 {chat['question']}"
-        )
-st.sidebar.markdown("---")
-st.sidebar.subheader("🧮 Tax Calculator")
-
-salary = st.sidebar.number_input(
-    "Annual Salary (₹)",
-    min_value=0,
-    step=50000
-)
-
-deductions = st.sidebar.number_input(
-    "Total Deductions (₹)",
-    min_value=0,
-    step=10000
-)
-
-calculate_tax = st.sidebar.button(
-    "Calculate Tax"
-)
-if calculate_tax:
-
-    old_tax = calculate_old_regime_tax(
-        salary,
-        deductions
+    deductions = st.number_input(
+        "Total Deductions (₹)",
+        min_value=0,
+        step=10000
     )
 
-    new_tax = calculate_new_regime_tax(
-        salary
+    calculate_tax = st.button(
+        "Calculate Tax"
     )
 
-    st.sidebar.markdown("### 📊 Tax Comparison")
+    if calculate_tax:
 
-    st.sidebar.write(
-        f"Old Regime Tax: ₹{old_tax:,.2f}"
-    )
-
-    st.sidebar.write(
-        f"New Regime Tax: ₹{new_tax:,.2f}"
-    )
-
-    # Recommendation
-    if old_tax < new_tax:
-
-        st.sidebar.success(
-            "✅ Old Regime is better for you"
+        old_tax = calculate_old_regime_tax(
+            salary,
+            deductions
         )
 
-    elif new_tax < old_tax:
-
-        st.sidebar.success(
-            "✅ New Regime is better for you"
+        new_tax = calculate_new_regime_tax(
+            salary
         )
 
-    else:
+        st.markdown("### 📊 Tax Comparison")
 
-        st.sidebar.info(
-            "Both regimes result in same tax"
+        st.write(
+            f"Old Regime Tax: ₹{old_tax:,.2f}"
         )
-    fig = plot_tax_comparison(old_tax, new_tax)
-    st.sidebar.pyplot(fig)
-    tax_saved = abs(old_tax - new_tax)
 
-    st.sidebar.write(f"Tax Difference: ₹{tax_saved:,.2f}")
+        st.write(
+            f"New Regime Tax: ₹{new_tax:,.2f}"
+        )
 
-    if old_tax < new_tax:
-      st.sidebar.success(f"You save ₹{tax_saved:,.2f} with Old Regime")
-    elif new_tax < old_tax:
-      st.sidebar.success(f"You save ₹{tax_saved:,.2f} with New Regime")
-    else:
-      st.sidebar.info("Both regimes are equal")
+        if old_tax < new_tax:
 
-prompt = st.chat_input("Ask your tax question...")
+            st.success(
+                "✅ Old Regime is better for you"
+            )
 
-if prompt:
+        elif new_tax < old_tax:
 
-    # Store user message
-    st.session_state.messages.append(
-        {"role": "user", "content": prompt}
+            st.success(
+                "✅ New Regime is better for you"
+            )
+
+        else:
+
+            st.info(
+                "Both regimes result in same tax"
+            )
+
+        fig = plot_tax_comparison(
+            old_tax,
+            new_tax
+        )
+
+        st.pyplot(fig)
+
+        tax_saved = abs(old_tax - new_tax)
+
+        st.markdown(
+            f"### 💰 Tax Difference: ₹{tax_saved:,.2f}"
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# =========================================
+# CHATBOT
+# =========================================
+
+with right_col:
+
+    st.markdown("<div class='card'>", unsafe_allow_html=True)
+
+    st.markdown("## 🤖 AI Tax Assistant")
+
+
+    # PDF Upload
+    uploaded_file = st.file_uploader(
+        "Upload Tax PDF",
+        type=["pdf"]
     )
 
-    # Display user message
-    with st.chat_message("user"):
-        st.markdown(prompt)
+    if uploaded_file is not None:
 
-    # AI response
-    with st.chat_message("assistant"):
+        save_path = f"data/{uploaded_file.name}"
 
-        with st.spinner("Thinking like a tax expert..."):
+        with open(save_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
 
-            try:
+        st.success("✅ PDF uploaded")
 
-                response = requests.post(
-                    "http://127.0.0.1:8000/ask",
-                    json={
-                      "question": prompt,
-                      "chat_history": st.session_state.messages
-                    }
-                )
+        with st.spinner("Processing PDF..."):
+            create_pdf_vectorstore(save_path)
 
-                data = response.json()
+        st.success("✅ PDF indexed successfully")
 
-                answer = data["answer"]
-                save_chat(
-                st.session_state["user"],
-                prompt,
-                answer
-                )
-                sources = data["sources"]
 
-                st.markdown(answer)
+    # CHAT HISTORY
+    for msg in st.session_state.messages:
 
-                with st.expander("📚 Sources"):
-                    for i, source in enumerate(sources):
-                        st.write(f"[{i+1}] {source}")
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
 
-                # Store assistant response
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": answer}
-                )
 
-            except Exception as e:
+    # CHAT INPUT
+    prompt = st.chat_input(
+        "Ask your tax question..."
+    )
 
-                st.error(f"Backend Error: {e}")
-# =========================
+
+    if prompt:
+
+        st.session_state.messages.append(
+            {
+                "role": "user",
+                "content": prompt
+            }
+        )
+
+        with st.chat_message("user"):
+            st.markdown(prompt)
+
+
+        with st.chat_message("assistant"):
+
+            with st.spinner(
+                "Thinking like a tax expert..."
+            ):
+
+                try:
+
+                    response = requests.post(
+                        "http://127.0.0.1:8000/ask",
+                        json={
+                            "question": prompt,
+                            "chat_history": st.session_state.messages
+                        }
+                    )
+
+                    data = response.json()
+
+                    answer = data["answer"]
+                    sources = data["sources"]
+
+
+                    save_chat(
+                        st.session_state["user"],
+                        prompt,
+                        answer
+                    )
+
+                    st.markdown(answer)
+
+                    with st.expander("📚 Sources"):
+
+                        for i, source in enumerate(sources):
+                            st.write(f"[{i+1}] {source}")
+
+
+                    st.session_state.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": answer
+                        }
+                    )
+
+                except Exception as e:
+
+                    st.error(
+                        f"Backend Error: {e}"
+                    )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+# =========================================
 # FOOTER
-# =========================
+# =========================================
+
 st.markdown(
     """
-    <div class="footer">
-    ⚠️ Disclaimer: This tool provides general tax guidance and should not replace professional financial advice.
+    <div class='footer'>
+        ⚠️ Disclaimer: This tool provides general tax guidance and should not replace professional financial advice.
     </div>
     """,
     unsafe_allow_html=True
 )
+
+
