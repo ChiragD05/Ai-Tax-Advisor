@@ -6,7 +6,10 @@ sys.path.append(
     )
 )
 from utils.firestore_db import save_chat, get_user_chats
-
+from utils.tax_calculator import (
+    calculate_old_regime_tax,
+    calculate_new_regime_tax
+)
 import pyrebase
 from utils.firebase_config import firebase_config
 import streamlit as st
@@ -289,6 +292,63 @@ if "user" in st.session_state:
 
         st.sidebar.write(
             f"💬 {chat['question']}"
+        )
+st.sidebar.markdown("---")
+st.sidebar.subheader("🧮 Tax Calculator")
+
+salary = st.sidebar.number_input(
+    "Annual Salary (₹)",
+    min_value=0,
+    step=50000
+)
+
+deductions = st.sidebar.number_input(
+    "Total Deductions (₹)",
+    min_value=0,
+    step=10000
+)
+
+calculate_tax = st.sidebar.button(
+    "Calculate Tax"
+)
+if calculate_tax:
+
+    old_tax = calculate_old_regime_tax(
+        salary,
+        deductions
+    )
+
+    new_tax = calculate_new_regime_tax(
+        salary
+    )
+
+    st.sidebar.markdown("### 📊 Tax Comparison")
+
+    st.sidebar.write(
+        f"Old Regime Tax: ₹{old_tax:,.2f}"
+    )
+
+    st.sidebar.write(
+        f"New Regime Tax: ₹{new_tax:,.2f}"
+    )
+
+    # Recommendation
+    if old_tax < new_tax:
+
+        st.sidebar.success(
+            "✅ Old Regime is better for you"
+        )
+
+    elif new_tax < old_tax:
+
+        st.sidebar.success(
+            "✅ New Regime is better for you"
+        )
+
+    else:
+
+        st.sidebar.info(
+            "Both regimes result in same tax"
         )
 
 prompt = st.chat_input("Ask your tax question...")
