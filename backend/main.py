@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 import sys
 import os
+from typing import Any, Dict, List
 
 # Add project root to Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -16,6 +17,7 @@ app = FastAPI()
 class QueryRequest(BaseModel):
     question: str
     chat_history: list = []
+    tax_context: Dict[str, Any] = {}
 
 # Root endpoint
 @app.get("/")
@@ -29,7 +31,8 @@ def ask_question(request: QueryRequest):
     # Call RAG pipeline directly
     answer, sources = get_tax_answer(
     request.question,
-    request.chat_history
+    request.chat_history,
+    request.tax_context
     )
 
     return {

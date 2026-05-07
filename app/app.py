@@ -277,10 +277,9 @@ with left_col:
 
     selected_total = 0
     selected_items = []
-
+    deduction_breakdown = {}
     for item in DEDUCTIONS:
         allowed = regime in item["allowed_in"]
-
         row_left, row_right = st.columns([3, 1])
 
         with row_left:
@@ -307,6 +306,7 @@ with left_col:
         if checked and allowed:
             selected_total += amount
             selected_items.append(f"{item['label']} = ₹{amount:,.0f}")
+            deduction_breakdown[item["key"]] = amount
 
     st.markdown("### 📌 Selected deductions")
     if selected_items:
@@ -318,9 +318,19 @@ with left_col:
     calculate_tax = st.button("Calculate Tax")
 
     if calculate_tax:
+       
         old_tax = calculate_old_regime_tax(salary, selected_total)
         new_tax = calculate_new_regime_tax(salary)
-
+        st.session_state.tax_context = {
+    "salary": salary,
+    "regime": regime,
+    "selected_total": selected_total,
+    "selected_items": selected_items,
+    "deduction_breakdown": deduction_breakdown,
+    "old_tax": old_tax,
+    "new_tax": new_tax,
+    "best_regime": "Old tax regime" if old_tax < new_tax else "New tax regime" if new_tax < old_tax else "Both equal",
+}
         st.markdown("### 📊 Tax Comparison")
         st.write(f"Old Regime Tax: ₹{old_tax:,.2f}")
         st.write(f"New Regime Tax: ₹{new_tax:,.2f}")
@@ -337,6 +347,10 @@ with left_col:
 
         tax_saved = abs(old_tax - new_tax)
         st.markdown(f"### 💰 Tax Difference: ₹{tax_saved:,.2f}")
+        st.session_state.messages.append({
+        "role": "assistant",
+         "content": f"I've calculated your taxes. Old regime tax: ₹{old_tax:,.2f}, New regime tax: ₹{new_tax:,.2f}. Ask me anything about this result."
+         })
 
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -382,6 +396,7 @@ with right_col:
                         json={
                             "question": prompt,
                             "chat_history": st.session_state.messages,
+                            "tax_context": st.session_state.get("tax_context", {})
                         },
                         timeout=90,
                     )
