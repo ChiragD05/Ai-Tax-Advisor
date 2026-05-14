@@ -1,90 +1,76 @@
 .stApp {
-    background: linear-gradient(135deg, #062841, #102d5f);
-    color: white;
+    background: linear-gradient(180deg, #609bd6 0%, #8f3aac 100%) !important;
+    color: #111827 !important;
 }
 
-#MainMenu,
-footer {
-    visibility: hidden;
-}
-
-header {
-    background: transparent;
+html, body, [class*="css"] {
+    background-color: #f8fafc !important;
+    color: #111827 !important;
 }
 
 [data-testid="stSidebar"] {
-    background: #374460;
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    background: #f3f4f6 !important;
+    border-right: 1px solid rgba(17, 24, 39, 0.08) !important;
 }
 
-.main-header {
-    margin-bottom: 25px;
+[data-testid="stHeader"] {
+    background: transparent !important;
 }
 
-.main-title {
-    font-size: 52px;
-    font-weight: 800;
-    color: #facc15;
+.main .block-container {
+    padding-top: 1.5rem !important;
+    padding-bottom: 1.5rem !important;
+    max-width: 1400px !important;
 }
 
-.subtitle {
-    font-size: 18px;
-    color: #cbd5e1;
-    margin-top: 5px;
+h1, h2, h3, h4, h5, h6, p, label, span, div {
+    color: #111827 !important;
 }
 
-.card {
-    background: rgba(255, 255, 255, 0.05);
-    padding: 24px;
-    border-radius: 22px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    backdrop-filter: blur(12px);
-    box-shadow: 0 0 25px rgba(0, 0, 0, 0.25);
-    margin-bottom: 20px;
+[data-testid="stTextInput"] input,
+[data-testid="stNumberInput"] input,
+textarea {
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: 1px solid rgba(17, 24, 39, 0.12) !important;
+    border-radius: 14px !important;
 }
 
-.history-card {
-    background: rgba(255, 255, 255, 0.06);
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 10px;
-    font-size: 14px;
+[data-testid="stButton"] button {
+    background: #b3ccee !important;
+    color: #ffffff !important;
+    border: none !important;
+    border-radius: 14px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 8px 18px rgba(31, 41, 55, 0.14) !important;
 }
 
-.stTextInput > div > div > input,
-.stNumberInput input {
-    background-color: rgba(255, 255, 255, 0.08);
-    color: white;
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
+[data-testid="stButton"] button:hover {
+    background: #111827 !important;
+    color: #ffffff !important;
 }
 
-.stButton > button {
-    width: 100%;
-    background: linear-gradient(to right, #facc15, #f59e0b);
-    color: black;
-    font-weight: bold;
-    border-radius: 12px;
-    border: none;
-    padding: 12px;
-    font-size: 15px;
+[data-testid="stChatMessageUser"] {
+    background: #e5e7eb !important;
+    color: #111827 !important;
+    border: 1px solid rgba(17, 24, 39, 0.08) !important;
+    border-radius: 18px !important;
 }
 
-.stButton > button:hover {
-    background: linear-gradient(to right, #fde047, #fbbf24);
-    color: black;
+[data-testid="stChatMessageAssistant"] {
+    background: #f3efe8 !important;
+    color: #111827 !important;
+    border: 1px solid rgba(17, 24, 39, 0.08) !important;
+    border-radius: 18px !important;
 }
 
-[data-testid="stChatMessage"] {
-    background: rgba(255, 255, 255, 0.04);
-    border-radius: 16px;
-    padding: 10px;
-    margin-bottom: 10px;
+[data-testid="stDataFrame"] {
+    background: #ffffff !important;
+    color: #111827 !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
 }
 
-.footer {
-    text-align: center;
-    color: #94a3b8;
-    margin-top: 40px;
-    margin-bottom: 10px;
+hr {
+    border-color: rgba(17, 24, 39, 0.08) !important;
 }

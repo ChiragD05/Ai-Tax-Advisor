@@ -9,9 +9,9 @@ sys.path.append(
     )
 )
 
-import requests
 import pyrebase
 import streamlit as st
+
 from utils.form16_extractor import extract_form16_data
 from utils.firebase_config import firebase_config
 from utils.firestore_db import (
@@ -28,6 +28,7 @@ from utils.tax_calculator import (
 )
 from utils.tax_visuals import plot_tax_comparison
 from rag.pdf_ingest import create_pdf_vectorstore
+from rag.pipeline import get_tax_answer
 
 
 # ======================================================
@@ -79,6 +80,9 @@ if "session_tax_contexts" not in st.session_state:
 
 if "deduction_mode" not in st.session_state:
     st.session_state.deduction_mode = "Old tax regime"
+
+if "auth_message" not in st.session_state:
+    st.session_state.auth_message = ""
 
 
 # ======================================================
@@ -257,6 +261,60 @@ def load_sidebar_history():
                 st.rerun()
 
 
+def clear_auth_form():
+    st.session_state["auth_email"] = ""
+    st.session_state["auth_password"] = ""
+
+
+def handle_signup():
+    email = st.session_state.get("auth_email", "")
+    password = st.session_state.get("auth_password", "")
+
+    try:
+        auth.create_user_with_email_and_password(email, password)
+        clear_auth_form()
+        st.session_state.auth_message = "✅ Account created"
+    except Exception as e:
+        error_message = str(e)
+        if "WEAK_PASSWORD" in error_message:
+            st.session_state.auth_message = "❌ Password must be at least 6 characters"
+        elif "EMAIL_EXISTS" in error_message:
+            st.session_state.auth_message = "❌ Email already exists"
+        else:
+            st.session_state.auth_message = "❌ Signup failed"
+
+
+def handle_login():
+    email = st.session_state.get("auth_email", "")
+    password = st.session_state.get("auth_password", "")
+
+    try:
+        auth.sign_in_with_email_and_password(email, password)
+        st.session_state.user = email
+        st.session_state.active_session_id = None
+        st.session_state.messages = []
+        clear_auth_form()
+        st.session_state.auth_message = f"✅ Logged in as {email}"
+        ensure_active_session()
+    except Exception as e:
+        error_message = str(e)
+        if "INVALID_PASSWORD" in error_message:
+            st.session_state.auth_message = "❌ Wrong password"
+        elif "EMAIL_NOT_FOUND" in error_message:
+            st.session_state.auth_message = "❌ User not found"
+        else:
+            st.session_state.auth_message = "❌ Login failed"
+
+
+def handle_logout():
+    st.session_state.user = None
+    st.session_state.active_session_id = None
+    st.session_state.messages = []
+    st.session_state.session_tax_contexts = {}
+    clear_auth_form()
+    st.session_state.auth_message = "Logged out"
+
+
 # ======================================================
 # HEADER
 # ======================================================
@@ -279,55 +337,22 @@ st.markdown(
 with st.sidebar:
     st.markdown("## 🔐 Authentication")
 
-    email = st.text_input("Email", key="auth_email")
-    password = st.text_input("Password", type="password", key="auth_password")
+    st.text_input("Email", key="auth_email")
+    st.text_input("Password", type="password", key="auth_password")
 
     auth_col1, auth_col2 = st.columns(2)
     with auth_col1:
-        login = st.button("Login")
+        st.button("Login", use_container_width=True, on_click=handle_login)
     with auth_col2:
-        signup = st.button("Signup")
+        st.button("Signup", use_container_width=True, on_click=handle_signup)
 
-    logout = st.button("Logout")
+    st.button("Logout", use_container_width=True, on_click=handle_logout)
 
-    if signup:
-        try:
-            auth.create_user_with_email_and_password(email, password)
-            st.success("✅ Account created")
-        except Exception as e:
-            error_message = str(e)
-            if "WEAK_PASSWORD" in error_message:
-                st.error("❌ Password must be at least 6 characters")
-            elif "EMAIL_EXISTS" in error_message:
-                st.error("❌ Email already exists")
-            else:
-                st.error("❌ Signup failed")
-
-    if login:
-        try:
-            auth.sign_in_with_email_and_password(email, password)
-            st.session_state.user = email
-            st.session_state.active_session_id = None
-            st.session_state.messages = []
-            st.success(f"✅ Logged in as {email}")
-            ensure_active_session()
-            st.rerun()
-        except Exception as e:
-            error_message = str(e)
-            if "INVALID_PASSWORD" in error_message:
-                st.error("❌ Wrong password")
-            elif "EMAIL_NOT_FOUND" in error_message:
-                st.error("❌ User not found")
-            else:
-                st.error("❌ Login failed")
-
-    if logout and st.session_state.user:
-        st.session_state.user = None
-        st.session_state.active_session_id = None
-        st.session_state.messages = []
-        st.session_state.session_tax_contexts = {}
-        st.success("Logged out")
-        st.rerun()
+    if st.session_state.auth_message:
+        if st.session_state.auth_message.startswith("✅") or st.session_state.auth_message == "Logged out":
+            st.success(st.session_state.auth_message)
+        else:
+            st.error(st.session_state.auth_message)
 
     st.markdown("---")
 
@@ -422,13 +447,11 @@ with left_col:
     else:
         st.caption("No deductions selected.")
 
-    calculate_tax = st.button("Calculate Tax & Simulate")
+    calculate_tax = st.button("Calculate Tax")
 
     if calculate_tax:
         old_tax = calculate_old_regime_tax(salary, selected_total)
         new_tax = calculate_new_regime_tax(salary)
-
-        
 
         current_tax_context = st.session_state.session_tax_contexts.get(
             st.session_state.active_session_id,
@@ -442,7 +465,11 @@ with left_col:
             "deduction_breakdown": deduction_breakdown,
             "old_tax": old_tax,
             "new_tax": new_tax,
-            "best_regime": "Old tax regime" if old_tax < new_tax else "New tax regime" if new_tax < old_tax else "Both equal",
+            "best_regime": (
+                "Old tax regime" if old_tax < new_tax
+                else "New tax regime" if new_tax < old_tax
+                else "Both equal"
+            ),
         })
 
         st.session_state.session_tax_contexts[st.session_state.active_session_id] = current_tax_context
@@ -460,8 +487,6 @@ with left_col:
 
         fig = plot_tax_comparison(old_tax, new_tax)
         st.pyplot(fig, use_container_width=True)
-
-        
 
         tax_saved = abs(old_tax - new_tax)
         st.markdown(f"### 💰 Tax Difference: ₹{tax_saved:,.2f}")
@@ -491,42 +516,51 @@ with left_col:
 with right_col:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("## 🤖 AI Tax Assistant")
+
     with st.expander("📄 Upload Form 16", expanded=False):
-     form16_file = st.file_uploader("Upload Form 16 PDF", type=["pdf"], key="form16_uploader")
+        form16_file = st.file_uploader(
+            "Upload Form 16 PDF",
+            type=["pdf"],
+            key="form16_uploader"
+        )
 
-     if form16_file is not None:
-        session_id = st.session_state.active_session_id
+        if form16_file is not None:
+            session_id = st.session_state.active_session_id
 
-        if not session_id:
-            st.error("Create or open a chat first.")
-        else:
-            upload_dir = f"data/form16/{session_id}"
-            os.makedirs(upload_dir, exist_ok=True)
+            if not session_id:
+                st.error("Create or open a chat first.")
+            else:
+                upload_dir = f"data/form16/{session_id}"
+                os.makedirs(upload_dir, exist_ok=True)
 
-            save_path = f"{upload_dir}/{form16_file.name}"
+                save_path = f"{upload_dir}/{form16_file.name}"
 
-            with open(save_path, "wb") as f:
-                f.write(form16_file.getbuffer())
+                with open(save_path, "wb") as f:
+                    f.write(form16_file.getbuffer())
 
-            with st.spinner("Extracting Form 16 details..."):
-                form16_data = extract_form16_data(save_path)
+                with st.spinner("Extracting Form 16 details..."):
+                    form16_data = extract_form16_data(save_path)
+
                 st.session_state.session_tax_contexts[session_id]["form16_data"] = form16_data
+                save_resource(session_id, form16_file.name, save_path, None)
 
-            st.session_state.session_tax_contexts[session_id]["form16_data"] = form16_data
+                st.success("✅ Form 16 extracted successfully")
 
-            st.success("✅ Form 16 extracted successfully")
-
-            st.markdown("### Extracted Summary")
-            st.write(f"**Employer:** {form16_data.get('employer_name')}")
-            st.write(f"**Employee:** {form16_data.get('employee_name')}")
-            st.write(f"**Gross Salary:** ₹{form16_data.get('gross_salary') or 0:,.2f}")
-            st.write(f"**Exemptions:** ₹{form16_data.get('exemptions') or 0:,.2f}")
-            st.write(f"**Deductions:** ₹{form16_data.get('deductions') or 0:,.2f}")
-            st.write(f"**Taxable Income:** ₹{form16_data.get('taxable_income') or 0:,.2f}")
-            st.write(f"**TDS:** ₹{form16_data.get('tds') or 0:,.2f}")
+                st.markdown("### Extracted Summary")
+                st.write(f"**Employer:** {form16_data.get('employer_name')}")
+                st.write(f"**Employee:** {form16_data.get('employee_name')}")
+                st.write(f"**Gross Salary:** ₹{form16_data.get('gross_salary') or 0:,.2f}")
+                st.write(f"**Exemptions:** ₹{form16_data.get('exemptions') or 0:,.2f}")
+                st.write(f"**Deductions:** ₹{form16_data.get('deductions') or 0:,.2f}")
+                st.write(f"**Taxable Income:** ₹{form16_data.get('taxable_income') or 0:,.2f}")
+                st.write(f"**TDS:** ₹{form16_data.get('tds') or 0:,.2f}")
 
     with st.expander("📄 Upload Tax PDF", expanded=False):
-        uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
+        uploaded_file = st.file_uploader(
+            "Upload PDF",
+            type=["pdf"],
+            key="tax_pdf_uploader"
+        )
 
         if uploaded_file is not None:
             session_id = st.session_state.active_session_id
@@ -582,25 +616,13 @@ with right_col:
         with st.chat_message("assistant"):
             with st.spinner("Thinking like a tax expert..."):
                 try:
-                    response = requests.post(
-    "http://127.0.0.1:8000/ask",
-    json={
-        "question": prompt,
-        "chat_history": st.session_state.messages,
-        "tax_context": {
-            **st.session_state.session_tax_contexts.get(st.session_state.active_session_id, {}),
-            "form16_data": st.session_state.session_tax_contexts.get(st.session_state.active_session_id, {}).get("form16_data", {})
-        },
-        "session_id": st.session_state.active_session_id,
-    },
-    timeout=90,
-)
-
-                    response.raise_for_status()
-                    data = response.json()
-
-                    answer = data["answer"]
-                    sources = data["sources"]
+                    answer, sources = get_tax_answer(
+                        prompt,
+                        st.session_state.messages,
+                        st.session_state.session_tax_contexts.get(
+                            st.session_state.active_session_id, {}
+                        )
+                    )
 
                     st.markdown(answer)
 
