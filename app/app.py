@@ -12,7 +12,7 @@ sys.path.append(
 import requests
 import pyrebase
 import streamlit as st
-
+from utils.form16_extractor import extract_form16_data
 from utils.firebase_config import firebase_config
 from utils.firestore_db import (
     create_chat_session,
@@ -491,6 +491,39 @@ with left_col:
 with right_col:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("## 🤖 AI Tax Assistant")
+    with st.expander("📄 Upload Form 16", expanded=False):
+     form16_file = st.file_uploader("Upload Form 16 PDF", type=["pdf"], key="form16_uploader")
+
+     if form16_file is not None:
+        session_id = st.session_state.active_session_id
+
+        if not session_id:
+            st.error("Create or open a chat first.")
+        else:
+            upload_dir = f"data/form16/{session_id}"
+            os.makedirs(upload_dir, exist_ok=True)
+
+            save_path = f"{upload_dir}/{form16_file.name}"
+
+            with open(save_path, "wb") as f:
+                f.write(form16_file.getbuffer())
+
+            with st.spinner("Extracting Form 16 details..."):
+                form16_data = extract_form16_data(save_path)
+                st.session_state.session_tax_contexts[session_id]["form16_data"] = form16_data
+
+            st.session_state.session_tax_contexts[session_id]["form16_data"] = form16_data
+
+            st.success("✅ Form 16 extracted successfully")
+
+            st.markdown("### Extracted Summary")
+            st.write(f"**Employer:** {form16_data.get('employer_name')}")
+            st.write(f"**Employee:** {form16_data.get('employee_name')}")
+            st.write(f"**Gross Salary:** ₹{form16_data.get('gross_salary') or 0:,.2f}")
+            st.write(f"**Exemptions:** ₹{form16_data.get('exemptions') or 0:,.2f}")
+            st.write(f"**Deductions:** ₹{form16_data.get('deductions') or 0:,.2f}")
+            st.write(f"**Taxable Income:** ₹{form16_data.get('taxable_income') or 0:,.2f}")
+            st.write(f"**TDS:** ₹{form16_data.get('tds') or 0:,.2f}")
 
     with st.expander("📄 Upload Tax PDF", expanded=False):
         uploaded_file = st.file_uploader("Upload PDF", type=["pdf"])
@@ -550,17 +583,18 @@ with right_col:
             with st.spinner("Thinking like a tax expert..."):
                 try:
                     response = requests.post(
-                        "http://127.0.0.1:8000/ask",
-                        json={
-                            "question": prompt,
-                            "chat_history": st.session_state.messages,
-                            "tax_context": st.session_state.session_tax_contexts.get(
-                                st.session_state.active_session_id, {}
-                            ),
-                            "session_id": st.session_state.active_session_id,
-                        },
-                        timeout=90,
-                    )
+    "http://127.0.0.1:8000/ask",
+    json={
+        "question": prompt,
+        "chat_history": st.session_state.messages,
+        "tax_context": {
+            **st.session_state.session_tax_contexts.get(st.session_state.active_session_id, {}),
+            "form16_data": st.session_state.session_tax_contexts.get(st.session_state.active_session_id, {}).get("form16_data", {})
+        },
+        "session_id": st.session_state.active_session_id,
+    },
+    timeout=90,
+)
 
                     response.raise_for_status()
                     data = response.json()
