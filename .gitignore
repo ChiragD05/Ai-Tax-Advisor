@@ -7,11 +7,10 @@ __pycache__/
 
 # Secrets
 .env
-
+.streamlit/secrets.toml
+utils/firebase_service_account.json
 # Mac files
 .DS_Store
 
-.utils/firebase_service_account.json
 
-utils/firebase_service_account.json
 
