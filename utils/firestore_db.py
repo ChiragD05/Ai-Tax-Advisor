@@ -2,12 +2,12 @@ import os
 import shutil
 from typing import Any, Dict, List, Optional
 
+import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
 
-# Initialize Firebase Admin once
 if not firebase_admin._apps:
-    cred = credentials.Certificate("utils/firebase_service_account.json")
+    cred = credentials.Certificate(dict(st.secrets["firebase_service_account"]))
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
