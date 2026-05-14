@@ -13,6 +13,5 @@ __pycache__/
 
 .utils/firebase_service_account.json
 
-.utils/firebase_config.py
 utils/firebase_service_account.json
-utils/firebase_config.py
+
