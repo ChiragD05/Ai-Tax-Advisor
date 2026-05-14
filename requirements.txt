@@ -13,3 +13,5 @@ pydantic
 tiktoken
 sentence-transformers
 pypdf
+pyrebase4
+firebase-admin
