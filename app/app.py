@@ -9,12 +9,13 @@ sys.path.append(
     )
 )
 
-import pyrebase
 import streamlit as st
 
 from utils.form16_extractor import extract_form16_data
-from utils.firebase_config import firebase_config
-from utils.firestore_db import (
+
+from utils.supabase_client import supabase
+
+from utils.db import (
     create_chat_session,
     list_chat_sessions,
     load_chat_messages,
@@ -22,6 +23,7 @@ from utils.firestore_db import (
     save_resource,
     delete_chat_session,
 )
+
 from utils.tax_calculator import (
     calculate_old_regime_tax,
     calculate_new_regime_tax,
@@ -54,12 +56,7 @@ st.set_page_config(
 load_css()
 
 
-# ======================================================
-# FIREBASE INIT
-# ======================================================
 
-firebase = pyrebase.initialize_app(firebase_config)
-auth = firebase.auth()
 
 
 # ======================================================
@@ -271,48 +268,74 @@ def handle_signup():
     password = st.session_state.get("auth_password", "")
 
     try:
-        auth.create_user_with_email_and_password(email, password)
+        response = supabase.auth.sign_up({
+            "email": email,
+            "password": password
+        })
+
         clear_auth_form()
-        st.session_state.auth_message = "✅ Account created"
+
+        st.session_state.auth_message = (
+            "✅ Account created. Please login."
+        )
+
     except Exception as e:
-        error_message = str(e)
-        if "WEAK_PASSWORD" in error_message:
-            st.session_state.auth_message = "❌ Password must be at least 6 characters"
-        elif "EMAIL_EXISTS" in error_message:
-            st.session_state.auth_message = "❌ Email already exists"
+        error = str(e)
+
+        if "rate limit" in error.lower():
+            st.session_state.auth_message = (
+                "⚠️ Account may already exist. Try Login instead."
+            )
         else:
-            st.session_state.auth_message = "❌ Signup failed"
-
-
+            st.session_state.auth_message = (
+                f"❌ Signup failed: {error}"
+            )
+            
 def handle_login():
     email = st.session_state.get("auth_email", "")
     password = st.session_state.get("auth_password", "")
 
     try:
-        auth.sign_in_with_email_and_password(email, password)
+        response = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+
         st.session_state.user = email
         st.session_state.active_session_id = None
         st.session_state.messages = []
-        clear_auth_form()
-        st.session_state.auth_message = f"✅ Logged in as {email}"
-        ensure_active_session()
-    except Exception as e:
-        error_message = str(e)
-        if "INVALID_PASSWORD" in error_message:
-            st.session_state.auth_message = "❌ Wrong password"
-        elif "EMAIL_NOT_FOUND" in error_message:
-            st.session_state.auth_message = "❌ User not found"
-        else:
-            st.session_state.auth_message = "❌ Login failed"
 
+        clear_auth_form()
+
+        st.session_state.auth_message = (
+            f"✅ Logged in as {email}"
+        )
+
+        ensure_active_session()
+
+    except Exception as e:
+        st.session_state.auth_message = (
+            f"❌ Login failed: {e}"
+        )
 
 def handle_logout():
+
+    try:
+        supabase.auth.sign_out()
+    except:
+        pass
+
     st.session_state.user = None
     st.session_state.active_session_id = None
     st.session_state.messages = []
+
     st.session_state.session_tax_contexts = {}
+
     clear_auth_form()
-    st.session_state.auth_message = "Logged out"
+
+    st.session_state.auth_message = (
+        "Logged out"
+    )
 
 
 # ======================================================
