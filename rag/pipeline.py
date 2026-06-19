@@ -72,7 +72,7 @@ def get_tax_answer(query, chat_history=None, tax_context=None):
             allow_dangerous_deserialization=True
         )
     # Internal RAG search
-    docs = db.similarity_search(query, k=3)
+    docs = active_db.similarity_search(query, k=3)
     context = "\n\n".join([doc.page_content for doc in docs])
 
     # Conversation history

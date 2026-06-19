@@ -474,7 +474,7 @@ with left_col:
 
     if calculate_tax:
         old_tax = calculate_old_regime_tax(salary, selected_total)
-        new_tax = calculate_new_regime_tax(salary)
+        new_tax = calculate_new_regime_tax(salary, selected_total)
 
         current_tax_context = st.session_state.session_tax_contexts.get(
             st.session_state.active_session_id,
@@ -556,7 +556,7 @@ with right_col:
                 upload_dir = f"data/form16/{session_id}"
                 os.makedirs(upload_dir, exist_ok=True)
 
-                save_path = f"{upload_dir}/{form16_file.name}"
+                save_path = f"{upload_dir}/{os.path.basename(form16_file.name)}"
 
                 with open(save_path, "wb") as f:
                     f.write(form16_file.getbuffer())
@@ -596,7 +596,7 @@ with right_col:
                 os.makedirs(upload_dir, exist_ok=True)
                 os.makedirs(index_dir, exist_ok=True)
 
-                save_path = f"{upload_dir}/{uploaded_file.name}"
+                save_path = f"{upload_dir}/{os.path.basename(uploaded_file.name)}"
 
                 with open(save_path, "wb") as f:
                     f.write(uploaded_file.getbuffer())
@@ -641,7 +641,7 @@ with right_col:
                 try:
                     answer, sources = get_tax_answer(
                         prompt,
-                        st.session_state.messages,
+                        st.session_state.messages[:-1],
                         st.session_state.session_tax_contexts.get(
                             st.session_state.active_session_id, {}
                         )
