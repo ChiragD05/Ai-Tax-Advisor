@@ -1,76 +1,221 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Global Font Override */
+html,
+body,
+[class*="css"],
 .stApp {
-    background: linear-gradient(180deg, #609bd6 0%, #8f3aac 100%) !important;
-    color: #111827 !important;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
-html, body, [class*="css"] {
-    background-color: #f8fafc !important;
-    color: #111827 !important;
+/* Base App Theme background */
+.stApp {
+    background: linear-gradient(135deg, #eef2f6 0%, #dbeafe 100%) !important;
+    color: #1f2937 !important;
 }
 
+/* Sidebar Styling */
 [data-testid="stSidebar"] {
-    background: #f3f4f6 !important;
-    border-right: 1px solid rgba(17, 24, 39, 0.08) !important;
+    background-color: rgba(243, 244, 246, 0.8) !important;
+    border-right: 1px solid rgba(229, 231, 235, 0.5) !important;
+    backdrop-filter: blur(10px);
 }
 
 [data-testid="stHeader"] {
     background: transparent !important;
 }
 
+/* Main Container Adjustment */
 .main .block-container {
-    padding-top: 1.5rem !important;
-    padding-bottom: 1.5rem !important;
-    max-width: 1400px !important;
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+    max-width: 95% !important;
 }
 
-h1, h2, h3, h4, h5, h6, p, label, span, div {
-    color: #111827 !important;
+/* General Typography Colors */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: #1e3a8a !important;
+    /* Deep Blue */
+    font-weight: 700 !important;
 }
 
+p,
+span,
+div,
+label {
+    color: #374151 !important;
+    /* Dark Gray */
+    line-height: 1.6 !important;
+}
+
+/* Text & Number Inputs */
 [data-testid="stTextInput"] input,
 [data-testid="stNumberInput"] input,
 textarea {
     background: #ffffff !important;
-    color: #111827 !important;
-    border: 1px solid rgba(17, 24, 39, 0.12) !important;
-    border-radius: 14px !important;
+    color: #1f2937 !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 10px !important;
+    padding: 10px !important;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s ease-in-out !important;
 }
 
-[data-testid="stButton"] button {
-    background: #b3ccee !important;
-    color: #ffffff !important;
+[data-testid="stTextInput"] input:focus,
+[data-testid="stNumberInput"] input:focus,
+textarea:focus {
+    border-color: #3b82f6 !important;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+}
+
+/* Glassmorphism Card System - Style top-level columns in main view as card containers */
+[data-testid="stAppViewBlockContainer"] div[data-testid="column"] {
+    background: rgba(255, 255, 255, 0.65) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border-radius: 16px !important;
+    border: 1px solid rgba(255, 255, 255, 0.4) !important;
+    box-shadow: 0 8px 30px rgba(31, 41, 55, 0.04) !important;
+    padding: 36px !important;
+    margin-bottom: 35px !important;
+}
+
+/* Reset styles for columns nested inside another column (like metrics m1, m2, m3) */
+[data-testid="stAppViewBlockContainer"] div[data-testid="column"] div[data-testid="column"] {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     border: none !important;
-    border-radius: 14px !important;
-    font-weight: 700 !important;
-    box-shadow: 0 8px 18px rgba(31, 41, 55, 0.14) !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Reset styles for columns inside the sidebar */
+[data-testid="stSidebar"] div[data-testid="column"] {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Add vertical spacing between widgets in the layout */
+[data-testid="stVerticalBlock"] {
+    gap: 1.6rem !important;
+}
+
+/* Spacing for specific inputs to prevent vertical crowding */
+div.row-widget.stSlider,
+div.row-widget.stNumberInput,
+div.row-widget.stRadio,
+div.row-widget.stFileUploader {
+    margin-bottom: 20px !important;
+}
+
+/* Custom header class */
+.main-header {
+    background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%) !important;
+    padding: 20px !important;
+    border-radius: 16px !important;
+    margin-bottom: 24px !important;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(30, 58, 138, 0.15);
+}
+
+.main-title {
+    color: #ffffff !important;
+    font-size: 2.2rem !important;
+    font-weight: 800 !important;
+    margin: 0 !important;
+}
+
+.subtitle {
+    color: #dbeafe !important;
+    font-size: 1rem !important;
+    margin-top: 4px !important;
+}
+
+/* Buttons styling */
+[data-testid="stButton"] button {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+    padding: 12px 28px !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2) !important;
+}
+
+/* CRITICAL: Force all button text and labels (including nested spans/divs) to be white and readable */
+[data-testid="stButton"] button,
+[data-testid="stButton"] button * {
+    color: #ffffff !important;
 }
 
 [data-testid="stButton"] button:hover {
-    background: #111827 !important;
-    color: #ffffff !important;
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3) !important;
+    transform: translateY(-1px);
 }
 
+/* Chat Message Bubbles */
 [data-testid="stChatMessageUser"] {
-    background: #e5e7eb !important;
-    color: #111827 !important;
-    border: 1px solid rgba(17, 24, 39, 0.08) !important;
-    border-radius: 18px !important;
+    background: #eff6ff !important;
+    /* Soft Blue */
+    color: #1e3a8a !important;
+    border: 1px solid rgba(59, 130, 246, 0.15) !important;
+    border-radius: 16px 16px 2px 16px !important;
+    box-shadow: 0 2px 12px rgba(59, 130, 246, 0.05) !important;
 }
 
 [data-testid="stChatMessageAssistant"] {
-    background: #f3efe8 !important;
-    color: #111827 !important;
-    border: 1px solid rgba(17, 24, 39, 0.08) !important;
-    border-radius: 18px !important;
+    background: #fdfdfd !important;
+    /* Soft Off-White */
+    color: #374151 !important;
+    border: 1px solid rgba(229, 231, 235, 0.6) !important;
+    border-radius: 16px 16px 16px 2px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02) !important;
 }
 
-[data-testid="stDataFrame"] {
-    background: #ffffff !important;
-    color: #111827 !important;
-    border-radius: 18px !important;
-    overflow: hidden !important;
+/* Metrics widgets (Fix truncation and scale sizes) */
+[data-testid="stMetricValue"] {
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #1e3a8a !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
 }
 
-hr {
-    border-color: rgba(17, 24, 39, 0.08) !important;
+[data-testid="stMetricLabel"] {
+    font-size: 0.85rem !important;
+    font-weight: 500 !important;
+    color: #4b5563 !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+[data-testid="stMetricDelta"] > div {
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+}
+
+/* Footer layout */
+.footer {
+    text-align: center;
+    color: #6b7280 !important;
+    font-size: 0.85rem !important;
+    margin-top: 40px !important;
+    padding-top: 20px !important;
+    border-top: 1px solid rgba(229, 231, 235, 0.5) !important;
 }

@@ -13,8 +13,11 @@ load_dotenv()
 embeddings = OpenAIEmbeddings()
 
 # Load FAISS once at startup
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+default_index_path = os.path.join(PROJECT_ROOT, "faiss_index")
+
 db = FAISS.load_local(
-    "faiss_index",
+    default_index_path,
     embeddings,
     allow_dangerous_deserialization=True
 )
@@ -28,27 +31,27 @@ llm = ChatOpenAI(
 
 def needs_web_search(query: str) -> bool:
     keywords = [
-        "latest",
-        "current",
-        "today",
-        "2025",
-        "2026",
-        "budget",
-        "new tax",
-        "tax update",
-        "recent",
-        "government",
-        "cbdt",
-        "news",
-        "deadline",
-        "notification",
-        "revenue",
-        "slab",
-        "rebate"
+        "latest", "current", "today", "2025", "2026", "budget", "new tax", 
+        "tax update", "recent", "government", "cbdt", "news", "deadline", 
+        "notification", "revenue", "slab", "rebate", "deal", "signed", 
+        "agreement", "treaty", "war", "ceasefire", "rate", "rbi", "fed", 
+        "stock", "price", "market", "gold", "president", "election", 
+        "minister", "announcement", "decision", "policy", "update", "live", 
+        "yesterday", "now", "happen", "world", "india"
     ]
 
     query_lower = query.lower()
-    return any(keyword in query_lower for keyword in keywords)
+    
+    # Check if any keyword matches
+    if any(keyword in query_lower for keyword in keywords):
+        return True
+        
+    # Check question structure for real-time inquiry (e.g. "is ...?", "who ...?")
+    question_words = ["is ", "are ", "was ", "were ", "who ", "what ", "where ", "when ", "why ", "did ", "does ", "has ", "have "]
+    if any(query_lower.startswith(qw) for qw in question_words) and "?" in query_lower:
+        return True
+
+    return False
 
 
 def get_tax_answer(query, chat_history=None, tax_context=None):
@@ -67,7 +70,7 @@ def get_tax_answer(query, chat_history=None, tax_context=None):
         )
     else:
         active_db = FAISS.load_local(
-            "faiss_index",
+            default_index_path,
             embeddings,
             allow_dangerous_deserialization=True
         )

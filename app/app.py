@@ -257,12 +257,6 @@ def load_sidebar_history():
 
                 st.rerun()
 
-
-def clear_auth_form():
-    st.session_state["auth_email"] = ""
-    st.session_state["auth_password"] = ""
-
-
 def handle_signup():
     email = st.session_state.get("auth_email", "")
     password = st.session_state.get("auth_password", "")
@@ -272,8 +266,6 @@ def handle_signup():
             "email": email,
             "password": password
         })
-
-        clear_auth_form()
 
         st.session_state.auth_message = (
             "✅ Account created. Please login."
@@ -305,13 +297,11 @@ def handle_login():
         st.session_state.active_session_id = None
         st.session_state.messages = []
 
-        clear_auth_form()
-
         st.session_state.auth_message = (
             f"✅ Logged in as {email}"
         )
 
-        ensure_active_session()
+        start_new_chat()
 
     except Exception as e:
         st.session_state.auth_message = (
@@ -330,8 +320,6 @@ def handle_logout():
     st.session_state.messages = []
 
     st.session_state.session_tax_contexts = {}
-
-    clear_auth_form()
 
     st.session_state.auth_message = (
         "Logged out"
@@ -358,18 +346,25 @@ st.markdown(
 # ======================================================
 
 with st.sidebar:
-    st.markdown("## 🔐 Authentication")
+    if not st.session_state.user:
+        st.markdown("## 🔐 Authentication")
 
-    st.text_input("Email", key="auth_email")
-    st.text_input("Password", type="password", key="auth_password")
+        st.text_input("Email", key="auth_email")
+        st.text_input("Password", type="password", key="auth_password")
 
-    auth_col1, auth_col2 = st.columns(2)
-    with auth_col1:
-        st.button("Login", use_container_width=True, on_click=handle_login)
-    with auth_col2:
-        st.button("Signup", use_container_width=True, on_click=handle_signup)
-
-    st.button("Logout", use_container_width=True, on_click=handle_logout)
+        auth_col1, auth_col2 = st.columns(2)
+        with auth_col1:
+            if st.button("Login", use_container_width=True):
+                handle_login()
+        with auth_col2:
+            if st.button("Signup", use_container_width=True):
+                handle_signup()
+                st.rerun()
+    else:
+        st.markdown(f"## 👤 Logged in as\n**{st.session_state.user}**")
+        if st.button("Logout", use_container_width=True):
+            handle_logout()
+            st.rerun()
 
     if st.session_state.auth_message:
         if st.session_state.auth_message.startswith("✅") or st.session_state.auth_message == "Logged out":
@@ -383,8 +378,8 @@ with st.sidebar:
         if st.button("➕ New Chat", use_container_width=True):
             start_new_chat()
 
-    st.markdown("---")
-    load_sidebar_history()
+        st.markdown("---")
+        load_sidebar_history()
 
 
 # ======================================================
@@ -402,7 +397,7 @@ ensure_active_session()
 # MAIN LAYOUT
 # ======================================================
 
-left_col, right_col = st.columns([1, 2])
+left_col, right_col = st.columns([2, 3])
 
 
 # ------------------------------------------------------
@@ -410,7 +405,6 @@ left_col, right_col = st.columns([1, 2])
 # ------------------------------------------------------
 
 with left_col:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("## 🧮 Tax Planner")
 
     st.caption(
@@ -443,17 +437,26 @@ with left_col:
         if not allowed:
             st.caption("Only available in the old tax regime")
 
+        # Initialize session state for this slider if not present
+        slider_key = f"{item['key']}_slider_{st.session_state.active_session_id}"
+        if slider_key not in st.session_state:
+            st.session_state[slider_key] = item["default"] if allowed else 0
+
+        # Draw value from session state (or force 0 if not allowed in current regime)
+        current_val = st.session_state[slider_key] if allowed else 0
+
         amount = st.slider(
-            f"{item['key']}_slider_{st.session_state.active_session_id}",
+            f"{item['key']}_slider_widget_{st.session_state.active_session_id}",
             min_value=0,
             max_value=item["max"],
-            value=item["default"] if allowed else 0,
+            value=current_val,
             step=1000,
             disabled=not allowed,
             label_visibility="collapsed",
         )
 
         if allowed:
+            st.session_state[slider_key] = amount
             deduction_breakdown[item["key"]] = amount
 
     selected_total = sum(deduction_breakdown.values())
@@ -498,8 +501,28 @@ with left_col:
         st.session_state.session_tax_contexts[st.session_state.active_session_id] = current_tax_context
 
         st.markdown("### 📊 Tax Comparison")
-        st.write(f"Old Regime Tax: ₹{old_tax:,.2f}")
-        st.write(f"New Regime Tax: ₹{new_tax:,.2f}")
+        
+        # Dashboard columns with metrics (2 columns for taxes, full-width banner for savings)
+        m1, m2 = st.columns(2)
+        with m1:
+            st.metric("Old Regime Tax", f"₹{old_tax:,.2f}")
+        with m2:
+            st.metric("New Regime Tax", f"₹{new_tax:,.2f}")
+        
+        tax_saved = abs(old_tax - new_tax)
+        st.markdown(
+            f"""
+            <div style='background-color: rgba(16, 185, 129, 0.1); border-left: 5px solid #10B981; padding: 16px; border-radius: 12px; margin-top: 15px; margin-bottom: 15px;'>
+                <h3 style='margin: 0; color: #065f46; font-size: 1.3rem; font-weight: 700;'>
+                    💰 Potential Savings: ₹{tax_saved:,.2f}
+                </h3>
+                <p style='margin: 4px 0 0 0; color: #047857; font-size: 0.9rem;'>
+                    {"Old Regime is cheaper." if old_tax < new_tax else "New Regime is cheaper." if new_tax < old_tax else "Both regimes have equal liability."}
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         if old_tax < new_tax:
             st.success("✅ Old Regime is better for you")
@@ -508,11 +531,37 @@ with left_col:
         else:
             st.info("Both regimes result in the same tax")
 
+        # Interactive Plotly chart
         fig = plot_tax_comparison(old_tax, new_tax)
-        st.pyplot(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-        tax_saved = abs(old_tax - new_tax)
-        st.markdown(f"### 💰 Tax Difference: ₹{tax_saved:,.2f}")
+        # Section: Recommended Optimization Actions
+        st.markdown("### 💡 Recommended Optimization Actions")
+        recommendations = []
+        
+        if regime == "Old tax regime":
+            # Check 80C
+            claimed_80c = deduction_breakdown.get("80c", 0)
+            if claimed_80c < 150000:
+                diff = 150000 - claimed_80c
+                recommendations.append(f"• **Section 80C**: Invest **₹{diff:,.0f}** more in ELSS, PPF, or NPS to save up to **₹{diff * 0.3:,.0f}** in taxes.")
+            # Check 80D
+            claimed_80d = deduction_breakdown.get("80d", 0)
+            if claimed_80d < 25000:
+                diff = 25000 - claimed_80d
+                recommendations.append(f"• **Section 80D (Health Premium)**: Claim **₹{diff:,.0f}** more for health insurance premium to save up to **₹{diff * 0.3:,.0f}**.")
+            # Check 24b
+            claimed_24b = deduction_breakdown.get("24b", 0)
+            if claimed_24b == 0:
+                recommendations.append("• **Section 24(b) (Home Loan)**: If you pay interest on a home loan, you can claim up to **₹2,00,000** in tax deductions.")
+        else:
+            recommendations.append("• **Section 80CCD(2) (Employer NPS)**: Ask your employer to contribute up to 10% of your basic salary to NPS; it is fully tax-exempt under the new regime.")
+            
+        if recommendations:
+            for rec in recommendations:
+                st.info(rec)
+        else:
+            st.success("🎉 Excellent! You have fully optimized all major deduction categories.")
 
         summary_msg = (
             f"I've calculated your taxes. Old regime tax: ₹{old_tax:,.2f}, "
@@ -529,7 +578,7 @@ with left_col:
             summary_msg
         )
 
-    st.markdown("</div>", unsafe_allow_html=True)
+
 
 
 # ------------------------------------------------------
@@ -537,7 +586,6 @@ with left_col:
 # ------------------------------------------------------
 
 with right_col:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.markdown("## 🤖 AI Tax Assistant")
 
     with st.expander("📄 Upload Form 16", expanded=False):
@@ -647,7 +695,14 @@ with right_col:
                         )
                     )
 
-                    st.markdown(answer)
+                    import time
+
+                    def stream_text(text):
+                        for word in text.split(" "):
+                            yield word + " "
+                            time.sleep(0.015)
+
+                    st.write_stream(stream_text(answer))
 
                     with st.expander("📚 Sources"):
                         for i, source in enumerate(sources):
@@ -665,7 +720,7 @@ with right_col:
                 except Exception as e:
                     st.error(f"Backend Error: {e}")
 
-    st.markdown("</div>", unsafe_allow_html=True)
+
 
 
 # ======================================================

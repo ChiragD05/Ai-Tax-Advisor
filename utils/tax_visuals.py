@@ -1,26 +1,35 @@
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 
 def plot_tax_comparison(old_tax, new_tax):
     labels = ["Old Regime", "New Regime"]
     values = [old_tax, new_tax]
 
-    fig, ax = plt.subplots(figsize=(6, 4))
-    bars = ax.bar(labels, values)
-
-    ax.set_ylabel("Tax (₹)")
-    ax.set_title("Tax Comparison")
-    ax.grid(axis="y", linestyle="--", alpha=0.3)
-
-    for bar in bars:
-        height = bar.get_height()
-        ax.text(
-            bar.get_x() + bar.get_width() / 2,
-            height,
-            f"₹{height:,.0f}",
-            ha="center",
-            va="bottom"
+    fig = go.Figure(data=[
+        go.Bar(
+            x=labels,
+            y=values,
+            marker_color=["#4F46E5", "#10B981"],  # Indigo & Emerald Green
+            text=[f"₹{old_tax:,.2f}", f"₹{new_tax:,.2f}"],
+            textposition='auto',
+            hoverinfo='y',
         )
+    ])
+
+    fig.update_layout(
+        title={
+            'text': "Tax Regime Comparison",
+            'y': 0.9,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        yaxis_title="Tax Liability (₹)",
+        template="plotly_white",
+        height=320,
+        margin=dict(l=40, r=40, t=50, b=20),
+        yaxis=dict(tickformat=",.0f")
+    )
 
     return fig
 
@@ -30,31 +39,25 @@ def plot_scenario_comparison(scenarios):
     old_values = [s["old_tax"] for s in scenarios]
     new_values = [s["new_tax"] for s in scenarios]
 
-    x = range(len(labels))
-    width = 0.35
+    fig = go.Figure(data=[
+        go.Bar(name='Old Regime', x=labels, y=old_values, marker_color='#4F46E5'),
+        go.Bar(name='New Regime', x=labels, y=new_values, marker_color='#10B981')
+    ])
 
-    fig, ax = plt.subplots(figsize=(10, 5))
-    old_bars = ax.bar([i - width/2 for i in x], old_values, width, label="Old Regime")
-    new_bars = ax.bar([i + width/2 for i in x], new_values, width, label="New Regime")
+    fig.update_layout(
+        barmode='group',
+        title={
+            'text': "Tax Simulation Scenarios",
+            'y': 0.9,
+            'x': 0.5,
+            'xanchor': 'center',
+            'yanchor': 'top'
+        },
+        yaxis_title="Tax Liability (₹)",
+        template="plotly_white",
+        height=400,
+        margin=dict(l=40, r=40, t=50, b=40),
+        yaxis=dict(tickformat=",.0f")
+    )
 
-    ax.set_ylabel("Tax (₹)")
-    ax.set_title("Tax Simulation Scenarios")
-    ax.set_xticks(list(x))
-    ax.set_xticklabels(labels, rotation=15, ha="right")
-    ax.legend()
-    ax.grid(axis="y", linestyle="--", alpha=0.3)
-
-    for bars in [old_bars, new_bars]:
-        for bar in bars:
-            height = bar.get_height()
-            ax.text(
-                bar.get_x() + bar.get_width() / 2,
-                height,
-                f"₹{height:,.0f}",
-                ha="center",
-                va="bottom",
-                fontsize=9
-            )
-
-    plt.tight_layout()
     return fig
